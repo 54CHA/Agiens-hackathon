@@ -57,23 +57,24 @@ class ChatAPI {
     return data.conversation;
   }
 
-  async createConversation(title?: string): Promise<Conversation> {
+  async createConversation(title: string = "New Conversation", agentId?: string): Promise<Conversation> {
     const data = await this.request("/chat/conversations", {
       method: "POST",
-      body: JSON.stringify({ title }),
+      body: JSON.stringify({ title, agentId }),
     });
     return data.conversation;
   }
 
   async sendMessage(
     conversationId: string,
-    message: string
+    message: string,
+    agentId?: string
   ): Promise<{ userMessage: Message; aiMessage: Message }> {
     const data = await this.request(
       `/chat/conversations/${conversationId}/messages`,
       {
         method: "POST",
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, agentId }),
       }
     );
     return {
@@ -160,19 +161,20 @@ export const useChat = () => {
   );
 
   const createNewChat = useCallback(
-    async (title?: string) => {
+    async (agentId?: string) => {
       if (!isAuthenticated) return;
 
       try {
         setError(null);
-        const newConversation = await chatAPI.createConversation(title);
-
-        // Add to conversations list and make it active
+        const newConversation = await chatAPI.createConversation("New Conversation", agentId);
+        
         setConversations((prev) => [newConversation, ...prev]);
         setActiveConversationId(newConversation.id);
         setMessages([]);
+        
+        return newConversation;
       } catch (error) {
-        console.error("Failed to create conversation:", error);
+        console.error("Failed to create new chat:", error);
         setError("Failed to create new chat");
         throw error;
       }
@@ -181,7 +183,7 @@ export const useChat = () => {
   );
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, agentId?: string) => {
       if (!text.trim() || !activeConversationId || !isAuthenticated) return;
 
       setIsLoading(true);
@@ -190,7 +192,8 @@ export const useChat = () => {
       try {
         const { userMessage, aiMessage } = await chatAPI.sendMessage(
           activeConversationId,
-          text.trim()
+          text.trim(),
+          agentId
         );
 
         // Add both messages to the current conversation

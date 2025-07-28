@@ -1,18 +1,69 @@
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import DeepSeekService from "../services/deepseekService.js";
+import GeminiService from "../services/geminiService.js";
 import { authenticateToken } from "../middleware/auth.js";
 import Database from "../config/database.js";
 
 const router = express.Router();
 
-// Initialize DeepSeek service only when needed
+// Initialize AI services only when needed
 const getDeepSeekService = () => {
   return new DeepSeekService();
 };
 
+const getGeminiService = () => {
+  return new GeminiService();
+};
+
+const getAIService = (model) => {
+  switch (model) {
+    case 'gemini-2.5-pro':
+      return getGeminiService();
+    case 'deepseek-v3':
+    default:
+      return getDeepSeekService();
+  }
+};
+
 // Apply authentication to all chat routes
 router.use(authenticateToken);
+
+// Test AI models endpoint
+router.get("/test-models", async (req, res) => {
+  try {
+    const testResults = {};
+    
+    // Test DeepSeek
+    try {
+      const deepseekService = getDeepSeekService();
+      const deepseekTest = await deepseekService.testConnection();
+      testResults.deepseek = deepseekTest;
+    } catch (error) {
+      testResults.deepseek = { success: false, message: error.message };
+    }
+    
+    // Test Gemini
+    try {
+      const geminiService = getGeminiService();
+      const geminiTest = await geminiService.testConnection();
+      testResults.gemini = geminiTest;
+    } catch (error) {
+      testResults.gemini = { success: false, message: error.message };
+    }
+    
+    res.json({
+      success: true,
+      models: testResults
+    });
+  } catch (error) {
+    console.error('Model test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to test models'
+    });
+  }
+});
 
 // Get all conversations for the authenticated user
 router.get("/conversations", async (req, res) => {
@@ -108,25 +159,24 @@ router.get("/conversations/:id", async (req, res) => {
 router.post("/conversations", async (req, res) => {
   try {
     const userId = req.user.id;
-    const { title } = req.body;
+    const { title = "New Conversation", agentId } = req.body;
 
-    const conversationTitle = title || "New Conversation";
-
+    // Create new conversation with agent ID
     const result = await Database.query(
-      `INSERT INTO conversations (user_id, title) 
-       VALUES ($1, $2) 
+      `INSERT INTO conversations (user_id, title, agent_id, created_at, updated_at) 
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
        RETURNING id, title, created_at as timestamp`,
-      [userId, conversationTitle]
+      [userId, title, agentId]
     );
 
     const conversation = {
       id: result.rows[0].id,
       title: result.rows[0].title,
-      lastMessage: "No messages yet",
       timestamp: result.rows[0].timestamp.toISOString(),
+      lastMessage: "No messages yet",
     };
 
-    res.status(201).json({
+    res.json({
       success: true,
       conversation,
     });
@@ -144,7 +194,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
   try {
     const conversationId = req.params.id;
     const userId = req.user.id;
-    const { message } = req.body;
+    const { message, agentId } = req.body;
 
     if (!message || message.trim().length === 0) {
       return res.status(400).json({
@@ -153,9 +203,12 @@ router.post("/conversations/:id/messages", async (req, res) => {
       });
     }
 
-    // Verify conversation belongs to user
+    // Verify conversation belongs to user and get agent info
     const conversationResult = await Database.query(
-      "SELECT id, title FROM conversations WHERE id = $1 AND user_id = $2",
+      `SELECT c.id, c.title, c.agent_id, a.system_prompt, a.name as agent_name, a.preferred_model 
+       FROM conversations c 
+       LEFT JOIN agents a ON c.agent_id = a.id 
+       WHERE c.id = $1 AND c.user_id = $2`,
       [conversationId, userId]
     );
 
@@ -164,6 +217,30 @@ router.post("/conversations/:id/messages", async (req, res) => {
         success: false,
         error: "Conversation not found",
       });
+    }
+
+    const conversation = conversationResult.rows[0];
+    
+    // Update conversation's agent if a new one is provided
+    let systemPrompt = conversation.system_prompt;
+    let preferredModel = conversation.preferred_model || 'deepseek-v3';
+    
+    if (agentId && agentId !== conversation.agent_id) {
+      // Get the new agent's system prompt and model preference
+      const agentResult = await Database.query(
+        "SELECT system_prompt, preferred_model FROM agents WHERE id = $1 AND (user_id = $2 OR is_default = true)",
+        [agentId, userId]
+      );
+      
+      if (agentResult.rows.length > 0) {
+        systemPrompt = agentResult.rows[0].system_prompt;
+        preferredModel = agentResult.rows[0].preferred_model || 'deepseek-v3';
+        // Update the conversation's agent
+        await Database.query(
+          "UPDATE conversations SET agent_id = $1 WHERE id = $2",
+          [agentId, conversationId]
+        );
+      }
     }
 
     // Store user message
@@ -190,15 +267,26 @@ router.post("/conversations/:id/messages", async (req, res) => {
       [conversationId]
     );
 
-    // Convert to DeepSeek message format
-    const messages = historyResult.rows.map((row) => ({
+    // Convert to DeepSeek message format with system prompt
+    const messages = [];
+    
+    // Add system prompt if available
+    if (systemPrompt) {
+      messages.push({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
+    
+    // Add conversation history
+    messages.push(...historyResult.rows.map((row) => ({
       role: row.is_user ? "user" : "assistant",
       content: row.content,
-    }));
+    })));
 
     // Get AI response
-    const deepseekService = getDeepSeekService();
-    const aiResponse = await deepseekService.generateResponse(messages);
+    const aiService = getAIService(preferredModel);
+    const aiResponse = await aiService.generateResponse(messages);
 
     if (!aiResponse.success) {
       return res.status(500).json({
@@ -229,7 +317,6 @@ router.post("/conversations/:id/messages", async (req, res) => {
     );
 
     // Update conversation title if it's still default and we have enough context
-    const conversation = conversationResult.rows[0];
     if (
       conversation.title === "New Conversation" &&
       historyResult.rows.length >= 2
@@ -244,7 +331,7 @@ router.post("/conversations/:id/messages", async (req, res) => {
           { role: "user", content: message.trim() },
         ];
 
-        const titleResponse = await deepseekService.generateResponse(
+        const titleResponse = await aiService.generateResponse(
           titlePrompt
         );
         if (titleResponse.success) {

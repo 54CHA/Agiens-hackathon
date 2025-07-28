@@ -3,8 +3,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { WebSocketServer } from 'ws';
+import { createServer } from 'http';
 import chatRoutes from "./routes/chat.js";
 import authRoutes from "./routes/auth.js";
+import voiceRoutes, { handleWebSocketUpgrade } from "./routes/voice.js";
+import agentsRoutes from "./routes/agents.js";
 import Database from "./config/database.js";
 
 // Load environment variables from .env file
@@ -14,7 +18,7 @@ const envResult = dotenv.config();
 if (envResult.error) {
   console.error("❌ Error loading .env file:", envResult.error.message);
   console.log(
-    "📁 Make sure you have created backend/.env file with your DEEPSEEK_API_KEY and DATABASE_URL"
+    "📁 Make sure you have created backend/.env file with your DEEPSEEK_API_KEY, ELEVENLABS_API_KEY and DATABASE_URL"
   );
 } else {
   console.log("✅ Environment file loaded successfully");
@@ -24,11 +28,19 @@ if (envResult.error) {
 if (process.env.DEEPSEEK_API_KEY) {
   console.log("✅ DEEPSEEK_API_KEY is configured");
 } else {
-  console.warn(
-    "⚠️  WARNING: DEEPSEEK_API_KEY not found in environment variables"
-  );
-  console.log("📋 Please ensure your backend/.env file contains:");
-  console.log("   DEEPSEEK_API_KEY=your_api_key_here");
+  console.log("❌ DEEPSEEK_API_KEY is missing");
+}
+
+if (process.env.GEMINI2_5_PRO_API_KEY) {
+  console.log("✅ GEMINI2_5_PRO_API_KEY is configured");
+} else {
+  console.log("❌ GEMINI2_5_PRO_API_KEY is missing");
+}
+
+if (process.env.ELEVENLABS_API_KEY) {
+  console.log("✅ ELEVENLABS_API_KEY is configured");
+} else {
+  console.log("❌ ELEVENLABS_API_KEY is missing");
 }
 
 if (process.env.DATABASE_URL) {
@@ -41,6 +53,9 @@ if (process.env.DATABASE_URL) {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server for WebSocket support
+const server = createServer(app);
 
 // Security middleware
 app.use(
@@ -80,15 +95,27 @@ app.get("/health", (req, res) => {
   res.json({
     status: "OK",
     timestamp: new Date().toISOString(),
-    service: "Chat Backend with Authentication",
-    version: "2.0.0",
-    features: ["DeepSeek AI", "User Authentication", "Persistent Chat History"],
+    service: "Chat Backend with Authentication & Voice Recognition",
+    version: "2.1.0",
+    features: ["DeepSeek AI", "User Authentication", "Persistent Chat History", "ElevenLabs Voice Recognition"],
   });
 });
 
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/agents", agentsRoutes);
+app.use("/api/voice", voiceRoutes);
+
+// WebSocket Server for voice recognition
+const wss = new WebSocketServer({ 
+  server,
+  path: '/voice-ws'
+});
+
+wss.on('connection', (ws, req) => {
+  handleWebSocketUpgrade(ws, req);
+});
 
 // 404 handler
 app.use("*", (req, res) => {
@@ -115,6 +142,16 @@ const gracefulShutdown = async (signal) => {
   console.log(`\n📡 Received ${signal}. Starting graceful shutdown...`);
 
   try {
+    // Close WebSocket server
+    wss.close(() => {
+      console.log("✅ WebSocket server closed");
+    });
+    
+    // Close HTTP server
+    server.close(() => {
+      console.log("✅ HTTP server closed");
+    });
+    
     await Database.close();
     console.log("✅ Database connections closed");
     process.exit(0);
@@ -127,15 +164,31 @@ const gracefulShutdown = async (signal) => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-// Start server
-app.listen(PORT, () => {
-  console.log("\n" + "=".repeat(60));
-  console.log("🚀 DEEPSEEK CHAT BACKEND SERVER STARTED");
-  console.log("=".repeat(60));
-  console.log(`📡 Server running on: http://localhost:${PORT}`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth/*`);
-  console.log(`💬 Chat endpoints: http://localhost:${PORT}/api/chat/*`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log("=".repeat(60));
-});
+// Start server function
+const startServer = async () => {
+  try {
+    // Initialize database connection
+    await Database.initialize();
+
+    // Start server
+    server.listen(PORT, () => {
+      console.log("\n" + "=".repeat(70));
+      console.log("🚀 DEEPSEEK CHAT BACKEND SERVER WITH VOICE RECOGNITION");
+      console.log("=".repeat(70));
+      console.log(`📡 Server running on: http://localhost:${PORT}`);
+      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+      console.log(`🔐 Auth endpoints: http://localhost:${PORT}/api/auth/*`);
+      console.log(`💬 Chat endpoints: http://localhost:${PORT}/api/chat/*`);
+      console.log(`🎤 Voice endpoints: http://localhost:${PORT}/api/voice/*`);
+      console.log(`🔌 WebSocket: ws://localhost:${PORT}/voice-ws`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log("=".repeat(70));
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();

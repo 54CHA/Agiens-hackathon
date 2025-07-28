@@ -82,6 +82,22 @@ class DeepSeekService {
       return words.join(" ") + (message.split(" ").length > 4 ? "..." : "");
     }
   }
+
+  async testConnection() {
+    try {
+      const testMessages = [
+        { role: "user", content: "Hello, this is a test message." }
+      ];
+      
+      await this.generateResponse(testMessages);
+      return { success: true, message: "DeepSeek API connection successful" };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: `DeepSeek API connection failed: ${error.message}` 
+      };
+    }
+  }
 }
 
 export default DeepSeekService;

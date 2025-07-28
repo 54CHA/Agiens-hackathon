@@ -1,0 +1,11 @@
+FRONTEND ENVIRONMENT SETUP INSTRUCTIONS
+
+1. Create a file named `.env.local` in your project root (same level as package.json)
+
+2. Add the following content:
+
+VITE_ELEVENLABS_AGENT_ID=agent_9101k119eeg7fht83hcw0aq1wbzr
+
+3. Save the file
+
+Note: This is optional since the agent ID is also hardcoded as a fallback in the App.tsx file. 

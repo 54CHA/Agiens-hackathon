@@ -1,3 +1,106 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --background: #0a0a0a;
+  --card: #1a1a1a;
+  --border: #2a2a2a;
+  --input: #1e1e1e;
+  --primary: #ffffff;
+  --secondary: #a1a1aa;
+  --muted: #71717a;
+  --accent: #3b82f6;
+  --destructive: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background-color: var(--background);
+  color: var(--primary);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Selection styles */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: white;
+}
+
+/* Focus styles */
+.focus-ring {
+  @apply focus:outline-none focus:border-gray-600;
+}
+
+/* Button animations */
+.btn-primary {
+  @apply bg-white text-black px-6 py-3 rounded-xl font-medium transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:bg-gray-100;
+}
+
+.btn-secondary {
+  @apply bg-gray-800 text-white px-6 py-3 rounded-xl font-medium border border-gray-700 transition-all duration-200 hover:bg-gray-700 focus:outline-none focus:bg-gray-700 focus:border-gray-600;
+}
+
+/* Input styles */
+.input-primary {
+  @apply bg-gray-900 border border-gray-700 text-white rounded-xl px-4 py-3 transition-all duration-200 focus:outline-none focus:border-gray-600 placeholder-gray-500;
+}
+
+/* Card styles */
+.card {
+  @apply bg-gray-900 border border-gray-800 rounded-2xl p-6;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: left;
+  word-wrap: break-word;
+}

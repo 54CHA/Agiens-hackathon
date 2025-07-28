@@ -49,23 +49,29 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white p-8 rounded-2xl shadow-xl">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome Back
-            </h2>
-            <p className="text-gray-600">
-              Sign in to your account to continue chatting
-            </p>
+    <div className="min-h-screen flex items-center justify-center bg-black px-4 py-8">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl mb-6">
+            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+              <div className="w-4 h-4 bg-white rounded-sm"></div>
+            </div>
           </div>
+          <h1 className="text-3xl font-bold text-white mb-3">
+            Welcome back
+          </h1>
+          <p className="text-gray-400 text-lg">
+            Sign in to your account to continue
+          </p>
+        </div>
 
+        {/* Form Card */}
+        <div className="bg-gray-950 border border-gray-800 rounded-3xl p-8 mb-8">
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="mb-6 p-4 bg-red-950 border border-red-800 rounded-xl">
+              <p className="text-red-300 text-sm">{error}</p>
             </div>
           )}
 
@@ -74,9 +80,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium text-gray-300 mb-3"
               >
-                Email Address
+                Email address
               </label>
               <input
                 id="email"
@@ -85,7 +91,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="w-full bg-black border border-gray-700 text-white rounded-xl px-4 py-4 text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent placeholder-gray-500"
                 placeholder="Enter your email"
                 disabled={isLoading}
               />
@@ -94,7 +100,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium text-gray-300 mb-3"
               >
                 Password
               </label>
@@ -105,7 +111,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="w-full bg-black border border-gray-700 text-white rounded-xl px-4 py-4 text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent placeholder-gray-500"
                 placeholder="Enter your password"
                 disabled={isLoading}
               />
@@ -114,37 +120,32 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-white text-black py-4 px-6 rounded-xl font-semibold text-base transition-all duration-200 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black mt-8"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mr-3"></div>
                   Signing in...
                 </div>
               ) : (
-                "Sign In"
+                "Continue"
               )}
             </button>
           </form>
-
-          {/* Switch to Register */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Don't have an account?{" "}
-              <button
-                onClick={onSwitchToRegister}
-                className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                disabled={isLoading}
-              >
-                Sign up
-              </button>
-            </p>
-          </div>
         </div>
 
-        {/* Footer */}
+        {/* Switch to Register */}
         <div className="text-center">
-          <p className="text-gray-500 text-sm">Powered by DeepSeek AI</p>
+          <p className="text-gray-400">
+            Don't have an account?{" "}
+            <button
+              onClick={onSwitchToRegister}
+              className="text-white hover:text-gray-300 font-medium transition-colors underline decoration-gray-600 underline-offset-4 hover:decoration-white"
+              disabled={isLoading}
+            >
+              Sign up
+            </button>
+          </p>
         </div>
       </div>
     </div>
