@@ -83,29 +83,29 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4 py-4">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 py-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-2xl mb-3">
-            <div className="w-6 h-6 bg-black rounded-lg flex items-center justify-center">
-              <div className="w-3 h-3 bg-white rounded-sm"></div>
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-900 rounded-2xl mb-3">
+            <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+              <div className="w-3 h-3 bg-gray-900 rounded-sm"></div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Create your account
           </h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-600 text-sm">
             Join our AI-powered chat platform
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-gray-950 border border-gray-800 rounded-3xl p-6 mb-6">
+        <div className="bg-gray-50 border border-gray-200 rounded-3xl p-6 mb-6">
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-950 border border-red-800 rounded-xl">
-              <p className="text-red-300 text-sm">{error}</p>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
 
@@ -114,7 +114,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Email address
               </label>
@@ -125,7 +125,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full bg-black border border-gray-700 text-white rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:border-gray-600 placeholder-gray-500"
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder-gray-500"
                 placeholder="Enter your email"
                 disabled={isLoading}
               />
@@ -134,7 +134,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Username
               </label>
@@ -145,7 +145,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full bg-black border border-gray-700 text-white rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:border-gray-600 placeholder-gray-500"
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder-gray-500"
                 placeholder="Choose a username"
                 disabled={isLoading}
               />
@@ -154,7 +154,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
                 Password
               </label>
@@ -165,7 +165,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full bg-black border border-gray-700 text-white rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:border-gray-600 placeholder-gray-500"
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder-gray-500"
                 placeholder="Create a password (min. 6 characters)"
                 disabled={isLoading}
               />
@@ -174,9 +174,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Confirm password
+                Confirm Password
               </label>
               <input
                 id="confirmPassword"
@@ -185,7 +185,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 required
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full bg-black border border-gray-700 text-white rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:border-gray-600 placeholder-gray-500"
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl px-4 py-3 text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent placeholder-gray-500"
                 placeholder="Confirm your password"
                 disabled={isLoading}
               />
@@ -194,11 +194,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-white text-black py-3 px-6 rounded-xl font-semibold text-base transition-all duration-200 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:bg-gray-100 mt-6"
+              className="w-full bg-gray-900 text-white py-3 px-6 rounded-xl font-semibold text-base transition-all duration-200 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 focus:ring-offset-white mt-6"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mr-3"></div>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
                   Creating account...
                 </div>
               ) : (
@@ -210,11 +210,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
         {/* Switch to Login */}
         <div className="text-center">
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-600 text-sm">
             Already have an account?{" "}
             <button
               onClick={onSwitchToLogin}
-              className="text-white hover:text-gray-300 font-medium transition-colors underline decoration-gray-600 underline-offset-4 hover:decoration-white"
+              className="text-gray-900 hover:text-gray-700 font-medium transition-colors underline decoration-gray-400 underline-offset-4 hover:decoration-gray-900"
               disabled={isLoading}
             >
               Sign in

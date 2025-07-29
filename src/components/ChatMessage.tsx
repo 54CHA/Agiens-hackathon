@@ -1,4 +1,8 @@
 import React from "react";
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { Message } from "../hooks/useChat";
 
 interface ChatMessageProps {
@@ -89,8 +93,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, showDate = fa
           </div>
           
           <div className="prose prose-gray dark:prose-invert max-w-none">
-            <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800 dark:text-gray-200">
-              {message.text}
+            <div className="text-sm leading-relaxed markdown-content">
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {message.text}
+              </ReactMarkdown>
             </div>
           </div>
         </div>

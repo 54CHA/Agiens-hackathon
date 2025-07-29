@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Load auth state from localStorage on mount
   useEffect(() => {
-    const loadAuthState = () => {
+    const loadAuthState = async () => {
       try {
         const savedToken = localStorage.getItem("authToken");
         const savedUser = localStorage.getItem("authUser");
@@ -58,13 +58,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(JSON.parse(savedUser));
 
           // Verify token is still valid
-          verifyToken(savedToken);
+          await verifyToken(savedToken);
+        } else {
+          // No saved auth state, set loading to false immediately
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error loading auth state:", error);
         logout();
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -95,6 +96,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("Token verification failed:", error);
       logout();
+    } finally {
+      setIsLoading(false);
     }
   };
 

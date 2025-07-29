@@ -103,6 +103,7 @@ export const useChat = () => {
   const [activeConversationId, setActiveConversationId] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Load conversations when user is authenticated
@@ -131,6 +132,7 @@ export const useChat = () => {
 
     try {
       setError(null);
+      setIsLoadingConversations(true);
       const conversationList = await chatAPI.getConversations();
       setConversations(conversationList);
 
@@ -141,6 +143,8 @@ export const useChat = () => {
     } catch (error) {
       console.error("Failed to load conversations:", error);
       setError("Failed to load conversations");
+    } finally {
+      setIsLoadingConversations(false);
     }
   }, [isAuthenticated, activeConversationId]);
 
@@ -189,15 +193,30 @@ export const useChat = () => {
       setIsLoading(true);
       setError(null);
 
+      // Create and immediately display the user message
+      const userMessage: Message = {
+        id: `temp-${Date.now()}`,
+        text: text.trim(),
+        isUser: true,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Add user message immediately to the UI
+      setMessages((prev) => [...prev, userMessage]);
+
       try {
-        const { userMessage, aiMessage } = await chatAPI.sendMessage(
+        const { userMessage: serverUserMessage, aiMessage } = await chatAPI.sendMessage(
           activeConversationId,
           text.trim(),
           agentId
         );
 
-        // Add both messages to the current conversation
-        setMessages((prev) => [...prev, userMessage, aiMessage]);
+        // Replace the temporary user message with the server one and add AI response
+        setMessages((prev) => [
+          ...prev.filter(msg => msg.id !== userMessage.id),
+          serverUserMessage,
+          aiMessage
+        ]);
 
         // Update the conversation's last message in the list
         setConversations((prev) =>
@@ -216,6 +235,10 @@ export const useChat = () => {
         loadConversations();
       } catch (error) {
         console.error("Failed to send message:", error);
+        
+        // Remove the user message if sending failed
+        setMessages((prev) => prev.filter(msg => msg.id !== userMessage.id));
+        
         setError(
           error instanceof Error ? error.message : "Failed to send message"
         );
@@ -276,6 +299,7 @@ export const useChat = () => {
     activeConversationId,
     messages,
     isLoading,
+    isLoadingConversations,
     error,
     sendMessage,
     createNewChat,

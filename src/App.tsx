@@ -9,6 +9,7 @@ import { ElevenLabsWidget } from "./components/ElevenLabsWidget";
 import { AgentModal } from "./components/AgentModal";
 import { AgentDropdown } from "./components/AgentDropdown";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { SkeletonLoader } from "./components/SkeletonLoader";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useChat } from "./hooks/useChat";
@@ -23,6 +24,7 @@ const ChatInterface: React.FC = () => {
     activeConversationId,
     messages,
     isLoading,
+    isLoadingConversations,
     error,
     sendMessage,
     createNewChat,
@@ -36,7 +38,6 @@ const ChatInterface: React.FC = () => {
   const {
     agents,
     selectedAgent,
-    isLoading: agentsLoading,
     error: agentsError,
     createAgent,
     updateAgent,
@@ -45,9 +46,6 @@ const ChatInterface: React.FC = () => {
   } = useAgents();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // ElevenLabs Agent ID from environment or fallback
-  const agentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID || "agent_9101k119eeg7fht83hcw0aq1wbzr";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -100,9 +98,15 @@ const ChatInterface: React.FC = () => {
 
   const hasActiveChat = messages.length > 0;
 
-  const handleVoiceMessage = (voiceText: string) => {
-    console.log("Voice message received from ElevenLabs widget:", voiceText);
-  };
+  // Show skeleton loader for initial loading
+  if (isLoadingConversations) {
+    // If no conversations exist or this is the first load, show new chat skeleton
+    if (conversations.length === 0) {
+      return <SkeletonLoader type="newChat" />;
+    }
+    // If conversations exist but we're loading messages, show existing chat skeleton
+    return <SkeletonLoader type="existingChat" />;
+  }
 
   // Agent management handlers
   const handleCreateAgent = () => {
@@ -195,7 +199,6 @@ const ChatInterface: React.FC = () => {
                     onCreateAgent={handleCreateAgent}
                     onEditAgent={handleEditAgent}
                     onDeleteAgent={handleDeleteAgent}
-                    isLoading={agentsLoading}
                   />
                 </div>
                 
@@ -216,8 +219,8 @@ const ChatInterface: React.FC = () => {
                       onClick={() => setShowVoiceWidget(!showVoiceWidget)}
                       className={`w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center flex-shrink-0 mb-7 ${
                         showVoiceWidget 
-                          ? 'bg-gray-400 text-gray-700 cursor-default' 
-                          : 'bg-white text-gray-900 hover:bg-gray-100'
+                          ? 'bg-gray-400 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-default' 
+                          : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                       }`}
                       disabled={showVoiceWidget}
                     >
@@ -246,7 +249,7 @@ const ChatInterface: React.FC = () => {
 
         {/* Chat Input Container - only show when there are messages */}
         {hasActiveChat && (
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-3xl p-4">
             <div className="max-w-4xl mx-auto flex items-end space-x-3">
               {/* Chat Input */}
               <div className="flex-1">
@@ -262,8 +265,8 @@ const ChatInterface: React.FC = () => {
                 onClick={() => setShowVoiceWidget(!showVoiceWidget)}
                 className={`w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center mb-7 justify-center flex-shrink-0 ${
                   showVoiceWidget 
-                    ? 'bg-gray-400 text-gray-700 cursor-default' 
-                    : 'bg-white text-gray-900 hover:bg-gray-100'
+                    ? 'bg-gray-400 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-default' 
+                    : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                 }`}
                 disabled={showVoiceWidget}
               >
@@ -310,14 +313,7 @@ const AuthenticatedApp: React.FC = () => {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black transition-colors duration-200">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gray-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <SkeletonLoader type="auth" />;
   }
 
   if (!isAuthenticated) {

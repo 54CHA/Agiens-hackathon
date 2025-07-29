@@ -70,11 +70,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <p className="text-xs text-gray-500 dark:text-gray-500 flex-1 min-w-0 pr-2">
             Press Enter to send, Shift + Enter for new line. Voice assistant available via microphone icon.
           </p>
-          {message.length > 0 && (
-            <div className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap">
-              {message.length} characters
-            </div>
-          )}
         </div>
       </form>
     </div>
