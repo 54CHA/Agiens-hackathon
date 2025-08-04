@@ -16,7 +16,7 @@ export interface Conversation {
   timestamp: string;
 }
 
-const API_BASE_URL = "http://localhost:3001/api";
+const API_BASE_URL = "/api";
 
 class ChatAPI {
   private async request(endpoint: string, options: RequestInit = {}) {
@@ -103,8 +103,12 @@ export const useChat = () => {
   const [activeConversationId, setActiveConversationId] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track if the current conversation is newly created (should show welcome)
+  const [isNewConversation, setIsNewConversation] = useState(false);
 
   // Load conversations when user is authenticated
   useEffect(() => {
@@ -154,11 +158,14 @@ export const useChat = () => {
 
       try {
         setError(null);
+        setIsLoadingMessages(true);
         const conversation = await chatAPI.getConversation(conversationId);
         setMessages(conversation.messages || []);
       } catch (error) {
         console.error("Failed to load conversation messages:", error);
         setError("Failed to load messages");
+      } finally {
+        setIsLoadingMessages(false);
       }
     },
     [isAuthenticated]
@@ -170,13 +177,12 @@ export const useChat = () => {
 
       try {
         setError(null);
-        const newConversation = await chatAPI.createConversation("New Conversation", agentId);
-        
-        setConversations((prev) => [newConversation, ...prev]);
-        setActiveConversationId(newConversation.id);
+        // Don't create conversation in database yet, just clear the current state
+        setActiveConversationId("");
         setMessages([]);
+        setIsNewConversation(true);
         
-        return newConversation;
+        return null; // No conversation created yet
       } catch (error) {
         console.error("Failed to create new chat:", error);
         setError("Failed to create new chat");
@@ -188,28 +194,57 @@ export const useChat = () => {
 
   const sendMessage = useCallback(
     async (text: string, agentId?: string) => {
-      if (!text.trim() || !activeConversationId || !isAuthenticated) return;
+      if (!text.trim() || !isAuthenticated) return;
 
       setIsLoading(true);
       setError(null);
 
       // Create and immediately display the user message
+      const tempTimestamp = new Date().toISOString();
+      console.log('Creating temporary user message:', {
+        tempTimestamp,
+        localTime: new Date().toLocaleTimeString(),
+        utcTime: new Date().toUTCString()
+      });
+      
       const userMessage: Message = {
         id: `temp-${Date.now()}`,
         text: text.trim(),
         isUser: true,
-        timestamp: new Date().toISOString(),
+        timestamp: tempTimestamp,
       };
 
       // Add user message immediately to the UI
       setMessages((prev) => [...prev, userMessage]);
 
       try {
+        let conversationId = activeConversationId;
+        
+        // If no active conversation (new chat), create one first
+        if (!conversationId || isNewConversation) {
+          const newConversation = await chatAPI.createConversation("New Conversation", agentId);
+          conversationId = newConversation.id;
+          setActiveConversationId(conversationId);
+          setConversations((prev) => [newConversation, ...prev]);
+          setIsNewConversation(false);
+        }
+
         const { userMessage: serverUserMessage, aiMessage } = await chatAPI.sendMessage(
-          activeConversationId,
+          conversationId,
           text.trim(),
           agentId
         );
+
+        console.log('Server response timestamps:', {
+          serverUserMessage: {
+            timestamp: serverUserMessage.timestamp,
+            localTime: new Date(serverUserMessage.timestamp).toLocaleTimeString()
+          },
+          aiMessage: {
+            timestamp: aiMessage.timestamp,
+            localTime: new Date(aiMessage.timestamp).toLocaleTimeString()
+          }
+        });
 
         // Replace the temporary user message with the server one and add AI response
         setMessages((prev) => [
@@ -221,7 +256,7 @@ export const useChat = () => {
         // Update the conversation's last message in the list
         setConversations((prev) =>
           prev.map((conv) =>
-            conv.id === activeConversationId
+            conv.id === conversationId
               ? {
                   ...conv,
                   lastMessage: aiMessage.text,
@@ -254,8 +289,14 @@ export const useChat = () => {
     (conversationId: string) => {
       if (conversationId === activeConversationId) return;
 
+      // Immediately switch to the new conversation
       setActiveConversationId(conversationId);
       setError(null);
+      setIsNewConversation(false); // Clear new conversation flag when switching to existing
+      setIsLoadingMessages(true); // Set loading immediately to prevent flash
+      
+      // Clear messages temporarily to show instant switch, then load new messages
+      setMessages([]);
     },
     [activeConversationId]
   );
@@ -299,7 +340,9 @@ export const useChat = () => {
     activeConversationId,
     messages,
     isLoading,
+    isLoadingMessages,
     isLoadingConversations,
+    isNewConversation,
     error,
     sendMessage,
     createNewChat,

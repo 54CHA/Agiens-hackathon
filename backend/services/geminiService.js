@@ -58,6 +58,7 @@ class GeminiService {
 
       if (response.data.candidates && response.data.candidates[0] && response.data.candidates[0].content) {
         return {
+          success: true,
           content: response.data.candidates[0].content.parts[0].text,
           model: "gemini-2.0-flash-exp",
           usage: {
@@ -67,11 +68,17 @@ class GeminiService {
           },
         };
       } else {
-        throw new Error("No valid response from Gemini API");
+        return {
+          success: false,
+          error: "No valid response from Gemini API"
+        };
       }
     } catch (error) {
       console.error("Gemini API Error:", error.response?.data || error.message);
-      throw new Error(`Gemini API Error: ${error.response?.data?.error?.message || error.message}`);
+      return {
+        success: false,
+        error: `Gemini API Error: ${error.response?.data?.error?.message || error.message}`
+      };
     }
   }
 

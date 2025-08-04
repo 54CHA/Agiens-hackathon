@@ -5,26 +5,29 @@ import { TypingIndicator } from "./components/TypingIndicator";
 import { Sidebar } from "./components/Sidebar";
 import { LoginForm } from "./components/LoginForm";
 import { RegisterForm } from "./components/RegisterForm";
-import { ElevenLabsWidget } from "./components/ElevenLabsWidget";
+// import { ElevenLabsWidget } from "./components/ElevenLabsWidget"; // Temporarily disabled
 import { AgentModal } from "./components/AgentModal";
 import { AgentDropdown } from "./components/AgentDropdown";
 import { ThemeToggle } from "./components/ThemeToggle";
-import { SkeletonLoader } from "./components/SkeletonLoader";
+import { SettingsDropdown } from "./components/SettingsDropdown";
+import { PromptApprovalModal } from "./components/PromptApprovalModal";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useChat } from "./hooks/useChat";
 import { useAgents } from "./hooks/useAgents";
+import { useSelfImprovement } from "./hooks/useSelfImprovement";
 import { Agent, CreateAgentRequest } from "./types/Agent";
+import { setUserTimezone, getDateStringInUserTimezone } from "./utils/timezone";
 
 // Main authenticated chat interface
 const ChatInterface: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const {
     conversations,
     activeConversationId,
     messages,
     isLoading,
-    isLoadingConversations,
+    isNewConversation,
     error,
     sendMessage,
     createNewChat,
@@ -33,7 +36,9 @@ const ChatInterface: React.FC = () => {
   } = useChat();
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
-  const [showVoiceWidget, setShowVoiceWidget] = useState(false);
+  // const [showVoiceWidget, setShowVoiceWidget] = useState(false); // Temporarily disabled
+  const [isPromptApprovalOpen, setIsPromptApprovalOpen] = useState(false);
+  const [promptApprovalData, setPromptApprovalData] = useState<any>(null);
 
   const {
     agents,
@@ -44,8 +49,22 @@ const ChatInterface: React.FC = () => {
     deleteAgent,
     selectAgent,
   } = useAgents();
+
+  const {
+    settings: selfImprovementSettings,
+    loadSettings,
+    trackPrompt,
+    analyzeConversation,
+    applyImprovement,
+    shouldTriggerAnalysis,
+  } = useSelfImprovement();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Store user's timezone on app initialization
+  useEffect(() => {
+    setUserTimezone();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,13 +74,42 @@ const ChatInterface: React.FC = () => {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    // Only load self-improvement settings when user is authenticated
+    if (user && !authLoading) {
+      loadSettings();
+    }
+  }, [user, authLoading, loadSettings]);
+
   const handleSendMessage = async (text: string) => {
     try {
-      // If no active conversation, create a new one first
-      if (!activeConversationId) {
-        await createNewChat(selectedAgent?.id);
-      }
+      // sendMessage will handle creating conversation if needed
       await sendMessage(text, selectedAgent?.id);
+
+      // Track prompt for self-improvement if enabled and agent is selected
+      if (activeConversationId && selectedAgent && selfImprovementSettings?.isEnabled) {
+        const promptCount = await trackPrompt(activeConversationId);
+        
+        if (promptCount && shouldTriggerAnalysis(promptCount)) {
+          // Trigger analysis based on mode
+          const analysisData = await analyzeConversation(selectedAgent.id, selectedAgent);
+          
+          if (analysisData) {
+            if (selfImprovementSettings.mode === 'auto') {
+              // Apply automatically
+              const updatedAgent = await applyImprovement(selectedAgent.id, analysisData.analysisId);
+              if (updatedAgent) {
+                selectAgent(updatedAgent);
+              }
+            } else if (selfImprovementSettings.mode === 'manual') {
+              // Show approval modal
+              setPromptApprovalData(analysisData);
+              setIsPromptApprovalOpen(true);
+            }
+            // For 'disabled' mode, we just analyze but don't show or apply anything
+          }
+        }
+      }
     } catch (error) {
       // Error is already handled in useChat hook
       console.error("Failed to send message:", error);
@@ -90,23 +138,34 @@ const ChatInterface: React.FC = () => {
   const shouldShowDateSeparator = (currentMessage: any, previousMessage: any) => {
     if (!previousMessage) return true;
     
-    const currentDate = new Date(currentMessage.timestamp).toDateString();
-    const previousDate = new Date(previousMessage.timestamp).toDateString();
+    // Compare dates in user's timezone
+    const currentDateString = getDateStringInUserTimezone(currentMessage.timestamp);
+    const previousDateString = getDateStringInUserTimezone(previousMessage.timestamp);
     
-    return currentDate !== previousDate;
+    // Debug logging to see what's happening
+    console.log('Date separator check:', {
+      current: {
+        text: currentMessage.text?.substring(0, 30) + '...',
+        timestamp: currentMessage.timestamp,
+        dateString: currentDateString,
+        isUser: currentMessage.isUser
+      },
+      previous: {
+        text: previousMessage.text?.substring(0, 30) + '...',
+        timestamp: previousMessage.timestamp,
+        dateString: previousDateString,
+        isUser: previousMessage.isUser
+      },
+      shouldShow: currentDateString !== previousDateString
+    });
+    
+    return currentDateString !== previousDateString;
   };
 
-  const hasActiveChat = messages.length > 0;
-
-  // Show skeleton loader for initial loading
-  if (isLoadingConversations) {
-    // If no conversations exist or this is the first load, show new chat skeleton
-    if (conversations.length === 0) {
-      return <SkeletonLoader type="newChat" />;
-    }
-    // If conversations exist but we're loading messages, show existing chat skeleton
-    return <SkeletonLoader type="existingChat" />;
-  }
+  // Simplified logic: if no active conversation or it's marked as new, show welcome
+  const shouldShowWelcome = !activeConversationId || isNewConversation;
+  const shouldShowLoading = activeConversationId && !isNewConversation && messages.length === 0;
+  const shouldShowChat = activeConversationId && !isNewConversation && messages.length > 0;
 
   // Agent management handlers
   const handleCreateAgent = () => {
@@ -139,6 +198,44 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  const handleApprovePromptImprovement = async (analysisId: string) => {
+    try {
+      if (!selectedAgent) return;
+      
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.warn('No auth token available for applying improvement');
+        return;
+      }
+      
+      const response = await fetch(`/api/self-improvement/agents/${selectedAgent.id}/apply-improvement/${analysisId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to apply improvement');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the selected agent with the new data
+        selectAgent(data.agent);
+        setIsPromptApprovalOpen(false);
+        setPromptApprovalData(null);
+      }
+    } catch (error) {
+      console.error('Failed to apply improvement:', error);
+    }
+  };
+
+  const handleRejectPromptImprovement = () => {
+    setIsPromptApprovalOpen(false);
+    setPromptApprovalData(null);
+  };
+
   return (
     <div className="h-screen flex bg-white dark:bg-black transition-colors duration-200">
       <Sidebar
@@ -151,8 +248,9 @@ const ChatInterface: React.FC = () => {
 
       {/* Chat Interface */}
       <div className="flex-1 flex flex-col">
-        {/* User info and theme toggle in top right - always visible */}
+        {/* User info and controls in top right - always visible */}
         <div className="absolute top-6 right-8 z-10 flex items-center space-x-4">
+          <SettingsDropdown />
           <ThemeToggle />
           <span className="text-sm text-gray-700 dark:text-gray-300">
             {user?.username}
@@ -175,7 +273,7 @@ const ChatInterface: React.FC = () => {
             </div>
           )}
 
-          {messages.length === 0 && !isLoading ? (
+          {shouldShowWelcome ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-2xl w-full px-8">
                 <div className="w-16 h-16 bg-gray-100 dark:bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-8">
@@ -187,11 +285,11 @@ const ChatInterface: React.FC = () => {
                   How can I help you today?
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 text-lg mb-8">
-                  Ask me anything using text input or use the voice assistant in the bottom-right corner.
+                  Ask me anything using the text input below.
                 </p>
                 
-                {/* Agent Dropdown */}
-                <div className="mb-8 flex justify-center">
+                {/* Agent Selection - Separate from input */}
+                <div className="max-w-4xl mx-auto mb-6">
                   <AgentDropdown 
                     agents={agents}
                     selectedAgent={selectedAgent}
@@ -199,6 +297,8 @@ const ChatInterface: React.FC = () => {
                     onCreateAgent={handleCreateAgent}
                     onEditAgent={handleEditAgent}
                     onDeleteAgent={handleDeleteAgent}
+                    variant="new-chat"
+                    openDirection="down"
                   />
                 </div>
                 
@@ -210,12 +310,19 @@ const ChatInterface: React.FC = () => {
                       <ChatInput
                         onSendMessage={handleSendMessage}
                         isLoading={isLoading}
-                        disabled={!activeConversationId}
+                        disabled={false}
+                        agents={agents}
+                        selectedAgent={selectedAgent}
+                        onSelectAgent={selectAgent}
+                        onCreateAgent={handleCreateAgent}
+                        onEditAgent={handleEditAgent}
+                        onDeleteAgent={handleDeleteAgent}
+                        hasActiveChat={false}
                       />
                     </div>
 
-                    {/* Microphone Button for Welcome Screen */}
-                    <button
+                    {/* Microphone Button for Welcome Screen - Temporarily Disabled */}
+                    {/* <button
                       onClick={() => setShowVoiceWidget(!showVoiceWidget)}
                       className={`w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center flex-shrink-0 mb-7 ${
                         showVoiceWidget 
@@ -227,12 +334,19 @@ const ChatInterface: React.FC = () => {
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12c-2.21 0-4-1.79-4-4V6H6v4c0 3.31 2.69 6 6 6s6-2.69 6-6V6h-2v4c0 2.21-1.79 4-4 4zm-1 2v3h2v-3h-1z"/>
                       </svg>
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               </div>
             </div>
-          ) : (
+          ) : shouldShowLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-gray-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">Loading conversation...</p>
+              </div>
+            </div>
+          ) : shouldShowChat ? (
             <div className="max-w-4xl mx-auto space-y-4">
               {messages.map((message, index) => (
                 <ChatMessage 
@@ -244,36 +358,31 @@ const ChatInterface: React.FC = () => {
               {isLoading && <TypingIndicator />}
               <div ref={messagesEndRef} />
             </div>
+          ) : (
+            // Fallback - this shouldn't happen but just in case
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-600 dark:text-gray-400">No conversation selected</p>
+            </div>
           )}
         </div>
 
-        {/* Chat Input Container - only show when there are messages */}
-        {hasActiveChat && (
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-t-3xl p-4">
-            <div className="max-w-4xl mx-auto flex items-end space-x-3">
+        {/* Chat Input Container - only show when there's an active chat with messages or loading */}
+        {(shouldShowChat || shouldShowLoading) && (
+          <div className="border-t border-gray-200 mx-auto dark:border-gray-700 bg-gray-500/5 dark:bg-gray-900/50 rounded-[30px] mb-6 p-4">
+            <div className="max-w-4xl mx-auto">
               {/* Chat Input */}
-              <div className="flex-1">
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  isLoading={isLoading}
-                  disabled={!activeConversationId}
-                />
-              </div>
-
-              {/* Microphone Button */}
-              <button
-                onClick={() => setShowVoiceWidget(!showVoiceWidget)}
-                className={`w-12 h-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center mb-7 justify-center flex-shrink-0 ${
-                  showVoiceWidget 
-                    ? 'bg-gray-400 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-default' 
-                    : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
-                }`}
-                disabled={showVoiceWidget}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2s2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12c-2.21 0-4-1.79-4-4V6H6v4c0 3.31 2.69 6 6 6s6-2.69 6-6V6h-2v4c0 2.21-1.79 4-4 4zm-1 2v3h2v-3h-1z"/>
-                </svg>
-              </button>
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+                disabled={false}
+                agents={agents}
+                selectedAgent={selectedAgent}
+                onSelectAgent={selectAgent}
+                onCreateAgent={handleCreateAgent}
+                onEditAgent={handleEditAgent}
+                onDeleteAgent={handleDeleteAgent}
+                hasActiveChat={Boolean(shouldShowChat || shouldShowLoading)}
+              />
             </div>
           </div>
         )}
@@ -282,10 +391,9 @@ const ChatInterface: React.FC = () => {
       {/* Floating Microphone Button */}
       {/* This button is now moved to the chat input bar */}
 
-      {/* ElevenLabs Widget - conditionally shown */}
-      {showVoiceWidget && (
+      {/* ElevenLabs Widget - Temporarily Disabled */}
+      {/* {showVoiceWidget && (
         <>
-          {/* Background overlay to close widget when clicking outside */}
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setShowVoiceWidget(false)}
@@ -294,14 +402,24 @@ const ChatInterface: React.FC = () => {
             onClose={() => setShowVoiceWidget(false)}
           />
         </>
-      )}
+      )} */}
 
       {/* Agent Creation/Edit Modal */}
       <AgentModal
         isOpen={isAgentModalOpen}
         onClose={() => setIsAgentModalOpen(false)}
         onSave={handleSaveAgent}
+        onDelete={handleDeleteAgent}
         editingAgent={editingAgent}
+      />
+
+      {/* Prompt Approval Modal */}
+      <PromptApprovalModal
+        isOpen={isPromptApprovalOpen}
+        onClose={() => setIsPromptApprovalOpen(false)}
+        onApprove={handleApprovePromptImprovement}
+        onReject={handleRejectPromptImprovement}
+        data={promptApprovalData}
       />
     </div>
   );
@@ -313,7 +431,14 @@ const AuthenticatedApp: React.FC = () => {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
 
   if (isLoading) {
-    return <SkeletonLoader type="auth" />;
+    return (
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-black">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, Trash, Chat } from "@phosphor-icons/react";
+import { formatDateInUserTimezone } from "../utils/timezone";
 import { Conversation } from "../hooks/useChat";
 
 interface SidebarProps {
@@ -65,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </p>
                     )}
                     <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                      {new Date(conversation.timestamp).toLocaleDateString()}
+                      {formatDateInUserTimezone(conversation.timestamp)}
                     </p>
                   </div>
                   

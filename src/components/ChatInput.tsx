@@ -1,16 +1,33 @@
 import React, { useState, KeyboardEvent } from "react";
 import { PaperPlaneTilt } from "@phosphor-icons/react";
+import { AgentDropdown } from "./AgentDropdown";
+import { Agent } from "../types/Agent";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   isLoading: boolean;
   disabled?: boolean;
+  // Agent props
+  agents: Agent[];
+  selectedAgent: Agent | null;
+  onSelectAgent: (agent: Agent) => void;
+  onCreateAgent: () => void;
+  onEditAgent: (agent: Agent) => void;
+  onDeleteAgent: (agent: Agent) => void;
+  hasActiveChat?: boolean;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSendMessage,
   isLoading,
   disabled = false,
+  agents,
+  selectedAgent,
+  onSelectAgent,
+  onCreateAgent,
+  onEditAgent,
+  onDeleteAgent,
+  hasActiveChat = false,
 }) => {
   const [message, setMessage] = useState("");
 
@@ -34,6 +51,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className="w-full">
       <form onSubmit={handleSubmit} className="relative">
+        {/* Agent Selection - Above input for active chats */}
+        {hasActiveChat && (
+          <div className="flex items-center justify-center mb-3 px-2">
+            <AgentDropdown 
+              agents={agents}
+              selectedAgent={selectedAgent}
+              onSelectAgent={onSelectAgent}
+              onCreateAgent={onCreateAgent}
+              onEditAgent={onEditAgent}
+              onDeleteAgent={onDeleteAgent}
+              variant="active-chat"
+              openDirection="down"
+            />
+          </div>
+        )}
+        
         <div className="relative bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-3xl overflow-hidden flex items-center transition-colors duration-200">
           <textarea
             value={message}
@@ -42,7 +75,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             placeholder={
               disabled
                 ? "Start a new chat to begin messaging..."
-                : "Send a message or use the voice assistant..."
+                : "Send a message..."
             }
             disabled={isLoading || disabled}
             className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 px-6 py-4 pr-16 resize-none border-0 focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed text-base leading-6 transition-colors duration-200"
@@ -66,11 +99,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </button>
         </div>
         
-        <div className="flex items-center justify-between mt-2 px-2">
-          <p className="text-xs text-gray-500 dark:text-gray-500 flex-1 min-w-0 pr-2">
-            Press Enter to send, Shift + Enter for new line. Voice assistant available via microphone icon.
-          </p>
-        </div>
+
       </form>
     </div>
   );

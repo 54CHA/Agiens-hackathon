@@ -9,6 +9,7 @@ import chatRoutes from "./routes/chat.js";
 import authRoutes from "./routes/auth.js";
 import voiceRoutes, { handleWebSocketUpgrade } from "./routes/voice.js";
 import agentsRoutes from "./routes/agents.js";
+import selfImprovementRoutes from "./routes/selfImprovement.js";
 import Database from "./config/database.js";
 
 // Load environment variables from .env file
@@ -106,6 +107,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/agents", agentsRoutes);
 app.use("/api/voice", voiceRoutes);
+app.use("/api/self-improvement", selfImprovementRoutes);
 
 // WebSocket Server for voice recognition
 const wss = new WebSocketServer({ 

@@ -2,6 +2,7 @@ import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import DeepSeekService from "../services/deepseekService.js";
 import GeminiService from "../services/geminiService.js";
+import OpenAIService from "../services/openaiService.js";
 import { authenticateToken } from "../middleware/auth.js";
 import Database from "../config/database.js";
 
@@ -16,10 +17,17 @@ const getGeminiService = () => {
   return new GeminiService();
 };
 
+const getOpenAIService = () => {
+  return new OpenAIService();
+};
+
 const getAIService = (model) => {
   switch (model) {
     case 'gemini-2.5-pro':
       return getGeminiService();
+    case 'gpt-4o':
+    case 'openai':
+      return getOpenAIService();
     case 'deepseek-v3':
     default:
       return getDeepSeekService();
@@ -50,6 +58,15 @@ router.get("/test-models", async (req, res) => {
       testResults.gemini = geminiTest;
     } catch (error) {
       testResults.gemini = { success: false, message: error.message };
+    }
+    
+    // Test OpenAI
+    try {
+      const openaiService = getOpenAIService();
+      const openaiTest = await openaiService.testConnection();
+      testResults.openai = openaiTest;
+    } catch (error) {
+      testResults.openai = { success: false, message: error.message };
     }
     
     res.json({

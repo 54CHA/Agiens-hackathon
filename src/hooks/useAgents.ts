@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Agent, CreateAgentRequest } from '../types/Agent';
 
-const API_BASE_URL = "http://localhost:3001/api";
+const API_BASE_URL = "/api";
 
 class AgentAPI {
   private async request(endpoint: string, options: RequestInit = {}) {

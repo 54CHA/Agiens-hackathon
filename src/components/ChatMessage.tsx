@@ -4,6 +4,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Message } from "../hooks/useChat";
+import { formatTimeInUserTimezone, formatDateInUserTimezone, formatDateTimeInUserTimezone } from "../utils/timezone";
 
 interface ChatMessageProps {
   message: Message;
@@ -11,43 +12,6 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, showDate = false }) => {
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString([], {
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-        year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
-      });
-    }
-  };
-
-  const formatDateTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    
-    if (date.toDateString() === today.toDateString()) {
-      return `Today at ${formatTime(timestamp)}`;
-    } else {
-      return `${formatDate(timestamp)} at ${formatTime(timestamp)}`;
-    }
-  };
 
   return (
     <div className="group mb-8">
@@ -56,7 +20,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, showDate = fa
         <div className="flex items-center justify-center mb-6">
           <div className="bg-gray-100 dark:bg-gray-800 px-3 pb-1 rounded-full">
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-              {formatDate(message.timestamp)}
+              {formatDateInUserTimezone(message.timestamp)}
             </span>
           </div>
         </div>
@@ -86,9 +50,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, showDate = fa
             </span>
             <span 
               className="text-xs text-gray-500 dark:text-gray-500"
-              title={formatDateTime(message.timestamp)}
+              title={formatDateTimeInUserTimezone(message.timestamp)}
             >
-              {formatTime(message.timestamp)}
+              {formatTimeInUserTimezone(message.timestamp)}
             </span>
           </div>
           

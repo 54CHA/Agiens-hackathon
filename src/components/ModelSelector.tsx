@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, Sparkle } from '@phosphor-icons/react';
+import { Brain, Sparkle, Robot } from '@phosphor-icons/react';
 
 interface ModelSelectorProps {
   selectedModel: string;
@@ -26,6 +26,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       description: 'Multimodal and creative tasks',
       icon: Sparkle,
       color: 'text-purple-400',
+    },
+    {
+      id: 'gpt-4o',
+      name: 'GPT-4o',
+      description: 'Advanced reasoning and multimodal',
+      icon: Robot,
+      color: 'text-green-400',
     },
   ];
 

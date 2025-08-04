@@ -12,12 +12,10 @@ export const TypingIndicator: React.FC = () => {
         {/* Typing Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-2">
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium text-black dark:text-white">
               AI Assistant
             </span>
-            <span className="text-xs text-gray-500">
-              thinking...
-            </span>
+          
           </div>
           
           <div className="flex items-center space-x-1">
